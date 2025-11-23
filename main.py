@@ -10,9 +10,8 @@ from tensorflow import keras
 from tensorflow.keras import layers, Model, Sequential
 import tensorflow as tf
 
-# -------------------------
-# Config / Hyperparams
-# -------------------------
+
+# Config
 RANDOM_STATE = 42
 N_SPLITS = 5
 EMBED_DIM = 64
@@ -25,17 +24,15 @@ BATCH_SIZE = 16
 EPOCHS = 100
 PATIENCE_ES = 12
 LABEL_SMOOTHING = 0.1
-MAX_ROLL_WINDOWS = [2, 3]  # rolling windows to create features
-FEATURE_PATTERNS = ['n100', 'p200', 'p300', 'n400']  # try to include these
+MAX_ROLL_WINDOWS = [2, 3] 
+FEATURE_PATTERNS = ['n100', 'p200', 'p300', 'n400']  
 DEVICE = "/GPU:0" if tf.config.list_physical_devices("GPU") else "/CPU:0"
 
 np.random.seed(RANDOM_STATE)
 tf.random.set_seed(RANDOM_STATE)
 warnings.filterwarnings('ignore')
 
-# -------------------------
 # Load data (tries multiple paths)
-# -------------------------
 print("Loading data...")
 paths = [
     "/mnt/data/ERPdata.csv",
@@ -66,17 +63,12 @@ if os.path.exists(demog_path):
 else:
     print("No demographics file found at /mnt/data/demographic.csv (optional).")
 
-# -------------------------
-# Basic checks and ids
-# -------------------------
 required_id_cols = ['subject', 'condition', 'trial']
 for c in required_id_cols:
     if c not in df.columns:
         raise ValueError(f"Required column '{c}' not found in data.")
 
-# -------------------------
-# Feature selection & engineering
-# -------------------------
+
 print("Selecting and engineering features...")
 
 # pick columns matching patterns
@@ -106,24 +98,15 @@ engineered_cols = [c for c in df.columns if c not in required_id_cols]
 feature_cols = engineered_cols
 print(f"Total features after engineering: {len(feature_cols)}")
 
-# -------------------------
-# Imputation: subject-wise mean then global
-# -------------------------
 print("Imputing missing values subject-wise (then global)...")
 df[feature_cols] = df.groupby('subject')[feature_cols].transform(lambda x: x.fillna(x.mean()))
 df[feature_cols] = df[feature_cols].fillna(df[feature_cols].mean())
 
-# -------------------------
-# Global sequence length (pad length)
-# -------------------------
 # Create per-subject sequences to compute global max length
 seq_lengths = df.groupby('subject').size().values
 max_sequence_length = int(seq_lengths.max())
 print("Max sequence length (global padding) =", max_sequence_length)
 
-# -------------------------
-# Optional demographic fusion
-# -------------------------
 use_demog = False
 demog_embedding_map = {}
 if demog_df is not None:
@@ -146,9 +129,7 @@ if demog_df is not None:
     else:
         print("Demographics file lacks 'subject' column — skipping demographic fusion.")
 
-# -------------------------
-# Helper: create sequences (per-subject)
-# -------------------------
+
 def create_sequences_from_df(df_full, feature_cols):
     X_seqs = []
     y_seqs = []
@@ -160,9 +141,7 @@ def create_sequences_from_df(df_full, feature_cols):
         subject_ids.append(str(subject))
     return X_seqs, y_seqs, subject_ids
 
-# -------------------------
-# Prepare global sequences and encoder
-# -------------------------
+
 X_all_seqs, y_all_seqs, subject_list = create_sequences_from_df(df, feature_cols)
 all_labels = np.unique([lab for seq in y_all_seqs for lab in seq])
 
@@ -179,9 +158,7 @@ num_features = len(feature_cols)
 
 print(f"Detected {len(subject_list)} subjects, {num_features} features, {num_classes} classes.")
 
-# -------------------------
 # Model building utilities
-# -------------------------
 class PositionalEmbedding(layers.Layer):
     def __init__(self, sequence_length, embed_dim, **kwargs):
         super().__init__(**kwargs)
@@ -269,9 +246,7 @@ def build_model(max_seq_len, num_features, num_classes, demog_dim=None, initial_
     model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
     return model
 
-# -------------------------
 # Cross-validation training
-# -------------------------
 gkf = GroupKFold(n_splits=N_SPLITS)
 subjects = np.array(subject_list)
 
@@ -405,9 +380,7 @@ for train_idx, test_idx in gkf.split(X_all_seqs, groups=subjects):
         except Exception as e:
             print("Could not save model:", e)
 
-# -------------------------
 # Aggregate results
-# -------------------------
 print("\n\n=== Cross-validation summary ===")
 print(f"Fold accuracies: {fold_accuracies}")
 print(f"Mean val accuracy: {np.mean(fold_accuracies):.4f} ± {np.std(fold_accuracies):.4f}")
@@ -419,3 +392,4 @@ print(f"Mean macro F1 over folds: {np.mean(macro_f1s):.4f} ± {np.std(macro_f1s)
 
 print(f"Best validation accuracy across folds: {best_val_acc:.4f}")
 print("Best model saved at:", best_model_path)
+
