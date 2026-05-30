@@ -1,90 +1,100 @@
-Schizophrenia Detection via ERP Data (Hybrid Transformer-GRU)
+# Schizophrenia ERP Classifier
 
-This repository contains a deep learning pipeline designed to classify Schizophrenia subjects versus Healthy Controls using Event-Related Potential (ERP) data. The model leverages a hybrid architecture combining Transformer blocks for attention-based feature extraction and Bidirectional GRUs for temporal sequence modeling, along with an optional fusion mechanism for demographic data.
+> **Clinical ML pipeline for schizophrenia detection via EEG Event-Related Potentials**  
+> Built during research internship at IEEE Engineering in Medicine and Biology Society (EMBS)
 
-Dataset
+[![Live Demo](https://img.shields.io/badge/🤗%20HuggingFace-Live%20Demo-blue)](https://huggingface.co/spaces/Lord-Bane/schizophrenia-erp-classifier)
+[![Python](https://img.shields.io/badge/Python-3.9+-green)](https://python.org)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-Keras-orange)](https://tensorflow.org)
 
-The model is designed to train on the Button Tone SZ dataset available on Kaggle.
+---
 
-Source: Kaggle: Button Tone SZ Dataset: https://www.kaggle.com/datasets/broach/button-tone-sz/
+## The Problem
 
-Required Files
+Schizophrenia affects approximately 24 million people globally. Early and accurate diagnosis remains a clinical challenge — traditional methods rely heavily on subjective assessment, which is time-consuming and prone to inconsistency.
 
-To run this pipeline, you must download the dataset and place the following CSV files in your working directory (or update the paths in main.py):
-ERPdata.csv (or mergedTrialData.csv): Contains the time-series ERP features.
-demographic.csv (Optional): Contains subject-level demographic information for fusion.
-Note: The script automatically attempts to load data from standard paths including /mnt/data/ and the local directory.
+EEG-based biomarkers, specifically Event-Related Potentials (ERPs), offer an objective, non-invasive signal that can distinguish schizophrenia patients from healthy controls. This project builds a complete, deployable pipeline that makes that signal actionable.
 
-Architecture Overview
+---
 
-The model (main.py) implements a sophisticated sequence processing pipeline:
+## What This Does
 
-Data Preprocessing:
-Feature Engineering: Automatically extracts standard ERP components (N100, P200, P300, N400) and calculates delta features and rolling means.
-Imputation: Handles missing values using subject-wise and global means.
-Normalization: Applies MinMax scaling per fold.
+A full end-to-end clinical ML system — from raw EEG data to live web inference:
 
-Hybrid Model Structure:
-Positional Embedding: Adds temporal context to the ERP sequence.
-Transformer Blocks: 4 layers of Multi-Head Attention (8 heads) to capture long-range dependencies in the ERP signal.
-Demographic Fusion (Optional): If demographic data is present, it is embedded, tiled, and concatenated with the time-series features.
-Bidirectional GRU: Processes the attention-enriched sequence to capture sequential dynamics.
-Classification Head: A TimeDistributed Dense layer with Softmax activation for trial-level classification.
+```
+Raw EEG Data → Feature Engineering → Model Training → Deployment → Live Inference
+```
 
-Training Strategy:
-Group K-Fold Cross-Validation: Uses 5 splits, ensuring that subjects are strictly separated between training and validation sets to prevent data leakage.
-Optimization: Adam optimizer with Label Smoothing (0.1) to reduce overfitting.
-Callbacks: Early Stopping, ReduceLROnPlateau, and Model Checkpointing.
+Given a CSV of ERP features, the system predicts whether the EEG pattern is consistent with schizophrenia or a healthy control — with confidence scores per trial.
 
-Installation & Requirements
-Ensure you have Python 3.8+ installed. Install the required dependencies using pip:
-pip install numpy pandas scikit-learn tensorflow
+---
 
-Dependencies
-TensorFlow: Deep learning backend.
-Pandas: Data manipulation and CSV loading.
-NumPy: Numerical operations.
-Scikit-Learn: Cross-validation (GroupKFold), preprocessing (MinMaxScaler, OneHotEncoder), and metrics (classification_report).
+## Dataset & Clinical Context
 
-Usage
-Prepare Data: Download the dataset from Kaggle and unzip it.
-Place Files: Ensure ERPdata.csv (or mergedTrialData.csv) is in the same directory as main.py.
+- **Source:** Public Kaggle EEG dataset
+- **Scale:** 4,000+ ERP samples across **81 subjects** and **9 electrode sites**
+- **Signal:** Event-Related Potentials (ERPs) — brain responses time-locked to stimuli
+- **Key biomarkers extracted:**
+  - **N100 amplitude** — early auditory processing component (~100ms post-stimulus)
+  - **P200 amplitude** — later cognitive processing component (~200ms post-stimulus)
 
-Run Training:
-python main.py
+These components are established clinical markers — reduced P200 amplitude in particular is consistently associated with schizophrenia in the neuroscience literature.
 
+---
 
-Output
-The script will output:
-Logs for data loading and feature engineering.
-Fold-by-fold training progress (Accuracy/Loss).
-A classification report for each fold.
-Final Summary: Mean accuracy and Macro F1 score across all 5 folds.
-Artifact: The best model is saved as final_schizo_detector.keras.
+## Technical Architecture
 
-Key Configuration (Hyperparameters)
-You can modify the configurations at the top of main.py to tune performance:
+### 1. Preprocessing Pipeline
+- Trial-level ERP feature extraction across 9 electrode sites
+- StandardScaler normalization (artifact saved for reproducible inference)
+- Sequence padding for variable-length inputs
+- Config JSON serialization for deployment consistency
 
-N_SPLITS (Default: 5)
-Number of cross-validation folds.
+### 2. Model
+- **Architecture:** Keras sequential classifier
+- **Benchmarked against:** 5 classifiers (Logistic Regression, Random Forest, SVM, XGBoost, Keras DNN)
+- **Saved artifacts:** trained model + scaler + config JSON → ensures inference matches training exactly
 
-EMBED_DIM (Default: 64)
-Dimension of the embedding layer.
+### 3. Deployment
+- **Platform:** Hugging Face Spaces (Gradio)
+- **Interface:** CSV upload → automatic feature reconstruction → scaling → sequence padding → prediction → tabular output with confidence scores
+- **Live and publicly accessible** — no setup required
 
-NUM_HEADS (Default: 8)
-Number of attention heads in Transformer.
+---
 
-TRANSFORMER_BLOCKS (Default: 4)
-Depth of the Transformer stack.
+## Live Demo
 
-GRU_UNITS (Default: 64)
-Units in the GRU layer.
+🔗 **[Try it here → huggingface.co/spaces/Lord-Bane/schizophrenia-erp-classifier](https://huggingface.co/spaces/Lord-Bane/schizophrenia-erp-classifier)**
 
-EPOCHS (Default: 100)
-Maximum training epochs (early stopping enabled).
+Upload a CSV of ERP features and get trial-level predictions instantly.
 
-FEATURE_PATTERNS (Default: ['n100', 'p200', 'p300', 'n400'])
-Substrings used to filter relevant ERP columns.
+**Input format:** CSV with N100 and P200 amplitude features per trial per electrode  
+**Output:** Per-trial classification (Schizophrenia / Healthy Control) with confidence score
 
-License
-This code is provided for educational and research purposes. Please cite the original dataset authors when publishing results.
+---
+
+## Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Data processing | Python, Pandas, NumPy, SciPy |
+| ML & modelling | TensorFlow/Keras, Scikit-learn |
+| Deployment | Gradio, Hugging Face Spaces |
+| Reproducibility | Joblib (scaler), JSON (config) |
+
+---
+
+## Project Context
+
+Built during a **Research Internship at IEEE EMBS (June–July 2025)** as part of an applied ML research initiative in computational neuroscience.
+
+This project demonstrates:
+- End-to-end ownership of a clinical ML pipeline — from raw signal to live deployment
+- Domain-specific feature engineering (ERP biomarkers) rather than generic ML application
+- Deployment-first thinking — reproducible artifacts, not just a notebook
+
+---
+
+## Disclaimer
+
+This tool is intended for **research purposes only** and is not a clinical diagnostic instrument. All predictions should be interpreted in the context of comprehensive clinical assessment by qualified professionals.
