@@ -1,4 +1,4 @@
-# 🧠 Schizophrenia ERP Classifier
+# Schizophrenia ERP Classifier
 
 > **Clinical EEG sequence classification using a Transformer + Bidirectional GRU hybrid**  
 > Research internship project — IEEE Engineering in Medicine and Biology Society (EMBS)
